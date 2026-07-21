@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.whmcp-tmp/
+*.log
+.env
+.env.local
+*.pem
+*.key
+id_*
+!.env.example

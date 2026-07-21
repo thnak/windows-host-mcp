@@ -1,0 +1,47 @@
+{
+  "name": "windows-host-mcp",
+  "version": "0.2.0",
+  "description": "MCP server that gives an agent SSH access to a Windows machine for build/test/exec, file transfer, long-running & interactive jobs.",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thnak/windows-host-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/thnak/windows-host-mcp/issues"
+  },
+  "homepage": "https://github.com/thnak/windows-host-mcp#readme",
+  "bin": {
+    "windows-host-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "check": "tsc --noEmit",
+    "inspect": "npx @modelcontextprotocol/inspector node dist/index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "ssh2": "^1.16.0",
+    "yauzl": "^3.4.0",
+    "yazl": "^3.3.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/ssh2": "^1.15.0",
+    "@types/yauzl": "^3.4.0",
+    "@types/yazl": "^3.3.1",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
