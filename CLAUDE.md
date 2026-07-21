@@ -19,7 +19,7 @@ No test suite exists in this repo. `npm run check` is the main correctness gate 
 
 The server needs a host configuration to start (`WINDOWS_HOSTS_CONFIG` pointing at a JSON file, or the flat `WINDOWS_SSH_*` env vars — see README.md and `hosts.example.json`/`.env.example`). Without one, `loadConfig()` in `src/config.ts` throws immediately.
 
-Published only via GitHub (no npm registry publish access from this environment) — releases are git tags (`vX.Y.Z`) on `github.com/thnak/windows-host-mcp`, installed with `npm install -g git+https://github.com/thnak/windows-host-mcp.git#v<version>`. **`dist/` is committed to the repo** (unusual for a TS project, but deliberate here — a `prepare: npm run build` script was tried and dropped because npm's git-dependency install path runs it in a way that doesn't reliably have `devDependencies`/`tsc` on PATH, breaking a plain `npm install -g git+...`; shipping the built output sidesteps that entirely). **Rebuild and commit `dist/` before tagging any release** (`npm run build`, then `git add dist`) — nothing else does this for you.
+Published only via GitHub (no npm registry publish access from this environment) — releases are git tags (`vX.Y.Z`) on `github.com/thnak/windows-host-mcp`. Install/update is `git clone` + `npm link`, **not** `npm install -g git+https://...`: that was the original design but testing found it genuinely corrupts the install on some npm versions — npm's git-dependency packing step silently dropped top-level files from this package's `dist/` and dropped `@modelcontextprotocol/sdk`'s `dist/` entirely, even with `--ignore-scripts`. `git clone` + `npm install` + `npm link` was verified to work reliably and is now the only documented path; `cliUpdate.ts`'s `update` subcommand mirrors it (`git fetch --tags` + `git checkout <tag>` + `npm install` inside the existing checkout, resolved via `import.meta.url` back to the package root) rather than re-invoking npm's git-install machinery. **`dist/` is committed to the repo** (unusual for a TS project, but deliberate — it's what makes a bare `git checkout <tag>` immediately runnable with no build step, and was *also* motivated by an earlier, now-moot problem: a `prepare: npm run build` script couldn't reliably find `tsc` on PATH inside npm's git-dependency install path). **Rebuild and commit `dist/` before tagging any release** (`npm run build`, then `git add dist`) — nothing else does this for you.
 
 ## Architecture
 
@@ -30,7 +30,7 @@ index.ts            CLI dispatcher (bin entry): argv → runServer() / runConfig
 server.ts             runServer(): loadConfig() → HostManager → registerAllTools() → stdio transport
 version.ts             reads the installed package.json's version at runtime (dist/../package.json)
 cliConfig.ts            `config` subcommand: interactive hosts.json wizard + `claude mcp add` registration
-cliUpdate.ts             `update` subcommand: GitHub Releases API → `npm install -g git+...#<tag>`
+cliUpdate.ts             `update` subcommand: GitHub Releases API → git fetch/checkout <tag> + npm install in place
 cliPrompt.ts             Prompter: queued-line stdin reader (readline/promises drops buffered lines — see below)
 config.ts            parses WINDOWS_HOSTS_CONFIG JSON or WINDOWS_SSH_* env into AppConfig/HostConfig
 hostManager.ts        owns every configured Host, tracks the "active" one, routes jobId → owning host

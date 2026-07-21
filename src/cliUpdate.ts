@@ -1,7 +1,12 @@
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import { VERSION } from "./version.js";
 
 const REPO = "thnak/windows-host-mcp";
+
+/** Package root: dist/cliUpdate.js -> dist/ -> root. Same layout dev (src/) and installed (dist/) both satisfy. */
+const PACKAGE_ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 
 interface GithubRelease {
   tag_name: string;
@@ -21,17 +26,40 @@ async function fetchLatestRelease(): Promise<GithubRelease> {
   return (await res.json()) as GithubRelease;
 }
 
+function isGitCheckout(): boolean {
+  const res = spawnSync("git", ["-C", PACKAGE_ROOT, "rev-parse", "--is-inside-work-tree"], { stdio: "ignore" });
+  return !res.error && res.status === 0;
+}
+
+function run(cmd: string, args: string[]): void {
+  const res = spawnSync(cmd, args, { cwd: PACKAGE_ROOT, stdio: "inherit" });
+  if (res.error || res.status !== 0) {
+    throw new Error(`\`${cmd} ${args.join(" ")}\` failed in ${PACKAGE_ROOT}.`);
+  }
+}
+
 /**
- * Self-update: check GitHub Releases for a newer tag than the running
- * version, then reinstall globally from that tag via `npm install -g
- * git+https://...#<tag>`. There's no npm-registry publish for this package,
- * so "install from a pinned git tag" is the update mechanism end to end —
- * the same command works for a first install (see README) and for updates.
+ * Self-update: this package has no npm-registry publish, so it's installed
+ * as a git checkout (see README — `git clone` + `npm link`). Updating is
+ * therefore a git operation done in place: fetch tags, check out the latest
+ * release tag, and reinstall dependencies. dist/ is committed to the repo
+ * (see CLAUDE.md for why), so a checkout alone leaves a working build —
+ * no rebuild step needed.
  */
 export async function runUpdate(): Promise<void> {
   process.stdout.write(`Current version: v${VERSION}\n`);
-  process.stdout.write("Checking for updates...\n");
 
+  if (!isGitCheckout()) {
+    process.stdout.write(
+      `\n${PACKAGE_ROOT} isn't a git checkout, so it can't be updated in place.\n` +
+        "Reinstall following the README's Install steps instead:\n" +
+        "  git clone https://github.com/thnak/windows-host-mcp.git\n" +
+        "  cd windows-host-mcp && git checkout <latest tag> && npm install && npm link\n",
+    );
+    return;
+  }
+
+  process.stdout.write("Checking for updates...\n");
   const release = await fetchLatestRelease();
   const latest = normalizeTag(release.tag_name);
 
@@ -41,14 +69,11 @@ export async function runUpdate(): Promise<void> {
   }
 
   process.stdout.write(`New version available: v${latest} (current: v${VERSION})\n`);
-  process.stdout.write(`Installing from ${release.tag_name}...\n\n`);
+  process.stdout.write(`Updating ${PACKAGE_ROOT} to ${release.tag_name}...\n\n`);
 
-  const gitUrl = `git+https://github.com/${REPO}.git#${release.tag_name}`;
-  const install = spawnSync("npm", ["install", "-g", gitUrl], { stdio: "inherit" });
-
-  if (install.status !== 0) {
-    throw new Error(`npm install failed. You can update manually with:\n  npm install -g ${gitUrl}`);
-  }
+  run("git", ["fetch", "--tags", "--quiet"]);
+  run("git", ["checkout", release.tag_name]);
+  run("npm", ["install"]);
 
   process.stdout.write(
     `\nUpdated to v${latest}. Restart any running windows-host-mcp process (or reconnect it from your MCP ` +

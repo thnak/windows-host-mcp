@@ -1,8 +1,9 @@
 /**
- * Self-update: check GitHub Releases for a newer tag than the running
- * version, then reinstall globally from that tag via `npm install -g
- * git+https://...#<tag>`. There's no npm-registry publish for this package,
- * so "install from a pinned git tag" is the update mechanism end to end —
- * the same command works for a first install (see README) and for updates.
+ * Self-update: this package has no npm-registry publish, so it's installed
+ * as a git checkout (see README — `git clone` + `npm link`). Updating is
+ * therefore a git operation done in place: fetch tags, check out the latest
+ * release tag, and reinstall dependencies. dist/ is committed to the repo
+ * (see CLAUDE.md for why), so a checkout alone leaves a working build —
+ * no rebuild step needed.
  */
 export declare function runUpdate(): Promise<void>;

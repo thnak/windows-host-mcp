@@ -46,23 +46,33 @@ Commands run in **PowerShell** by default; each command tool accepts a `shell` o
 
 ## Install
 
-Not published to the npm registry — install straight from GitHub, pinned to a release tag:
-
-```bash
-npm install -g git+https://github.com/thnak/windows-host-mcp.git#v0.2.0
-```
-
-This puts a `windows-host-mcp` binary on your PATH. `windows-host-mcp update` (below) reinstalls the same way
-against whatever the latest GitHub release is, so it also works as the update command.
-
-For local development instead, clone and build:
+Not published to the npm registry — clone and link it instead:
 
 ```bash
 git clone https://github.com/thnak/windows-host-mcp.git
 cd windows-host-mcp
+git checkout v0.2.0   # pin to a release tag; omit to track main instead
 npm install
-npm run build
+npm link
 ```
+
+`npm link` puts a `windows-host-mcp` binary on your PATH (a symlink back to this clone — `dist/` is committed to
+the repo, so no separate build step is required). If `npm link` fails with an `EACCES` permission error, npm's
+global prefix isn't user-writable; the standard fix is to point it at a directory you own, e.g.:
+
+```bash
+mkdir -p ~/.npm-global
+npm config set prefix ~/.npm-global
+# add ~/.npm-global/bin to your PATH (e.g. in ~/.bashrc), then re-run npm link
+```
+
+`windows-host-mcp update` (below) keeps this same checkout current, so there's no separate update mechanism to
+learn.
+
+> **Note:** `npm install -g git+https://...` (installing directly from a git URL without cloning) looks like it
+> should work too, but hit real, reproducible corruption in testing on some npm versions — it silently dropped
+> files from `dist/` and from a dependency's `dist/` during npm's git-dependency packing step. Until that's
+> sorted out, `git clone` + `npm link` is the only install path this repo tests and recommends.
 
 ## CLI commands
 
@@ -70,7 +80,7 @@ npm run build
 |---|---|
 | `windows-host-mcp` | Run the MCP server over stdio (default — this is what an MCP client invokes). |
 | `windows-host-mcp config` | Interactive wizard: add/edit/remove hosts in `hosts.json`, then optionally register/update the server with Claude Code. |
-| `windows-host-mcp update` | Check GitHub Releases for a newer version and reinstall in place. |
+| `windows-host-mcp update` | Check GitHub Releases for a newer tag, `git checkout` it in place, and reinstall dependencies. |
 | `windows-host-mcp --version` | Print the installed version. |
 | `windows-host-mcp --help` | Show usage. |
 
@@ -136,8 +146,8 @@ New-ItemProperty -Path "HKLM:\SOFTWARE\OpenSSH" -Name DefaultShell `
 
 `windows-host-mcp config` (above) does this for you interactively. This section is the manual/scripted
 equivalent — useful for automation or if you'd rather edit files by hand. There are two ways to configure hosts:
-**the JSON file for multiple hosts**, or the flat env vars for a single host. Examples below assume a global
-install (`windows-host-mcp` on PATH); if you're running from a clone instead, replace `-- windows-host-mcp` with
+**the JSON file for multiple hosts**, or the flat env vars for a single host. Examples below assume `windows-host-mcp`
+is on PATH (via `npm link`, see Install); without that, replace `-- windows-host-mcp` with
 `-- node /absolute/path/to/windows-host-mcp/dist/index.js`.
 
 ### Multiple hosts (recommended)
@@ -230,7 +240,7 @@ Typical agent flow:
 - **`batch_upload`** zips the selected files locally, sends them in one SFTP transfer, and unpacks with PowerShell's built-in `Expand-Archive` — no extra tooling needed on either side. Select files via `files` (explicit relative paths), `pattern` (regex over paths relative to `localDir`), or neither (whole folder, recursive by default). `writePolicy` controls collisions with existing remote files: `overwrite` (default) always replaces, `keep-newer` replaces only if the local file's mtime is newer (zip timestamps have ~2s resolution), `skip-existing` never touches an existing file.
 - **`batch_download`** is the mirror: files are selected and zipped *on the Windows host* with PowerShell's built-in `Compress-Archive`, pulled down in one SFTP transfer, and unpacked here. Same `files` / `pattern` / whole-folder selection (relative to `remoteDir` this time) and the same `writePolicy` semantics, applied to local files instead of remote ones.
 - **Secrets:** the private key stays on Linux; only its path is passed via env. Keep keys out of the repo (`.gitignore` covers `*.key`, `id_*`, `.env`).
-- **Updating:** run `windows-host-mcp update` — it checks GitHub Releases for a newer tag and reinstalls in place with the same `npm install -g git+...` command used for the initial install. Restart (or reconnect) any running MCP client session afterward so it picks up the new build.
+- **Updating:** run `windows-host-mcp update` — it checks GitHub Releases for a newer tag, then runs `git fetch`/`git checkout <tag>`/`npm install` in your existing clone (the same one `npm link` pointed the binary at). Restart (or reconnect) any running MCP client session afterward so it picks up the new build.
 
 ## Development
 
