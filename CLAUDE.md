@@ -19,7 +19,7 @@ No test suite exists in this repo. `npm run check` is the main correctness gate 
 
 The server needs a host configuration to start (`WINDOWS_HOSTS_CONFIG` pointing at a JSON file, or the flat `WINDOWS_SSH_*` env vars — see README.md and `hosts.example.json`/`.env.example`). Without one, `loadConfig()` in `src/config.ts` throws immediately.
 
-Published only via GitHub (no npm registry publish access from this environment) — releases are git tags (`vX.Y.Z`) on `github.com/thnak/windows-host-mcp`, installed with `npm install -g git+https://github.com/thnak/windows-host-mcp.git#v<version>`. `package.json`'s `prepare` script (`npm run build`) is what makes a git-sourced `npm install` produce a working `dist/` — don't remove it.
+Published only via GitHub (no npm registry publish access from this environment) — releases are git tags (`vX.Y.Z`) on `github.com/thnak/windows-host-mcp`, installed with `npm install -g git+https://github.com/thnak/windows-host-mcp.git#v<version>`. **`dist/` is committed to the repo** (unusual for a TS project, but deliberate here — a `prepare: npm run build` script was tried and dropped because npm's git-dependency install path runs it in a way that doesn't reliably have `devDependencies`/`tsc` on PATH, breaking a plain `npm install -g git+...`; shipping the built output sidesteps that entirely). **Rebuild and commit `dist/` before tagging any release** (`npm run build`, then `git add dist`) — nothing else does this for you.
 
 ## Architecture
 
